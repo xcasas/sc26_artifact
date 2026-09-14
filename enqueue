@@ -1,33 +1,37 @@
 #!/bin/bash -e
 
+# Script directory
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
 # ==========================
 # Arguments
 # ==========================
 
-if [ "$#" -lt 2 ]; then
+if [ "$#" -lt 4 ]; then
     echo "Usage:"
-    echo "  $0 <scheduler> <num_nodes> [combinations] [num_blocks] [num_gridsearch] [dataset] [queue_size] [dislib_dir]"
+    echo "  $0 <project_name> <qos> <scheduler> <num_nodes> [combinations] [num_blocks] [num_gridsearch] [dataset] [queue_size] [dislib_dir]"
     echo
     echo "Schedulers:"
     echo "  consensus"
     echo "  baseline"
     echo
     echo "Examples:"
-    echo "  $0 consensus 5 9 30 1 AT 10"
-    echo "  $0 baseline  5 9 30 1 AT"
+    echo "  $0 ehpc826 gp_debug consensus 5 9 30 1 AT 10"
+    echo "  $0 ehpc826 gp_debug baseline  5 9 30 1 AT"
     exit 1
 fi
 
-scheduler="${1}"
-num_nodes="${2}"
-combinations="${3:-9}"
-num_blocks="${4:-30}"
-num_gridsearch="${5:-1}"
-dataset="${6:-AT}"
-queue_size="${7:-10}"
-dislib_dir="${8:-${SCRIPT_DIR}/dislib}"
+project_name="${1}"
+qos="${2}"
+scheduler="${3}"
+num_nodes="${4}"
+
+combinations="${5:-9}"
+num_blocks="${6:-30}"
+num_gridsearch="${7:-1}"
+dataset="${8:-AT}"
+queue_size="${9:-10}"
+dislib_dir="${10:-${SCRIPT_DIR}/dislib}"
 
 # ==========================
 # Execution configuration
@@ -43,7 +47,9 @@ scheduler_config="${SCRIPT_DIR}/config.properties"
 if [ "${scheduler}" == "consensus" ]; then
 
     result_dir="${SCRIPT_DIR}/results/consensus/q${queue_size}/b${num_blocks}/n${num_nodes}"
+
     agents_mode="plain"
+
     scheduler_args=(
         --scheduler=es.bsc.compss.scheduler.swarm.SwarmTS
         --scheduler_config_file="${scheduler_config}"
@@ -52,7 +58,9 @@ if [ "${scheduler}" == "consensus" ]; then
 elif [ "${scheduler}" == "baseline" ]; then
 
     result_dir="${SCRIPT_DIR}/results/baseline/b${num_blocks}/n${num_nodes}"
+
     agents_mode="tree"
+
     scheduler_args=(
         --scheduler_config_file="${scheduler_config}"
     )
@@ -63,15 +71,22 @@ else
     exit 1
 fi
 
+# ==========================
+# Output directory
+# ==========================
+
 log_dir="${result_dir}/logs"
+
 mkdir -p "${log_dir}"
 
 # ==========================
-# Summary
+# Experiment summary
 # ==========================
 
 echo "Submitting experiment"
 echo "---------------------"
+echo "Project:          ${project_name}"
+echo "QoS:              ${qos}"
 echo "Scheduler:        ${scheduler}"
 echo "Nodes/agents:     ${num_nodes}"
 echo "Combinations:     ${combinations}"
@@ -92,8 +107,8 @@ echo
 
 enqueue_compss \
     --lang=python \
-    --project_name=ehpc826 \
-    --qos=gp_debug \
+    --project_name="${project_name}" \
+    --qos="${qos}" \
     \
     --job_dependency="None" \
     --num_nodes="${num_nodes}" \
