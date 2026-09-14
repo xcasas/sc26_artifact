@@ -1,0 +1,117 @@
+#!/bin/bash -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+# ==========================
+# Arguments
+# ==========================
+
+if [ "$#" -lt 2 ]; then
+    echo "Usage:"
+    echo "  $0 <scheduler> <num_nodes> [combinations] [num_blocks] [num_gridsearch] [dataset] [queue_size] [dislib_dir]"
+    echo
+    echo "Schedulers:"
+    echo "  consensus"
+    echo "  baseline"
+    echo
+    echo "Examples:"
+    echo "  $0 consensus 5 9 30 1 AT 10"
+    echo "  $0 baseline  5 9 30 1 AT"
+    exit 1
+fi
+
+scheduler="${1}"
+num_nodes="${2}"
+combinations="${3:-9}"
+num_blocks="${4:-30}"
+num_gridsearch="${5:-1}"
+dataset="${6:-AT}"
+queue_size="${7:-10}"
+dislib_dir="${8:-${SCRIPT_DIR}/dislib}"
+
+# ==========================
+# Execution configuration
+# ==========================
+
+exec_time=40
+scheduler_config="${SCRIPT_DIR}/config.properties"
+
+# ==========================
+# Scheduler-specific setup
+# ==========================
+
+if [ "${scheduler}" == "consensus" ]; then
+
+    result_dir="${SCRIPT_DIR}/results/consensus/q${queue_size}/b${num_blocks}/n${num_nodes}"
+    agents_mode="plain"
+    scheduler_args=(
+        --scheduler=es.bsc.compss.scheduler.swarm.SwarmTS
+        --scheduler_config_file="${scheduler_config}"
+    )
+
+elif [ "${scheduler}" == "baseline" ]; then
+
+    result_dir="${SCRIPT_DIR}/results/baseline/b${num_blocks}/n${num_nodes}"
+    agents_mode="tree"
+    scheduler_args=(
+        --scheduler_config_file="${scheduler_config}"
+    )
+
+else
+    echo "Unknown scheduler: ${scheduler}"
+    echo "Select: consensus | baseline"
+    exit 1
+fi
+
+log_dir="${result_dir}/logs"
+mkdir -p "${log_dir}"
+
+# ==========================
+# Summary
+# ==========================
+
+echo "Submitting experiment"
+echo "---------------------"
+echo "Scheduler:        ${scheduler}"
+echo "Nodes/agents:     ${num_nodes}"
+echo "Combinations:     ${combinations}"
+echo "Blocks:           ${num_blocks}"
+echo "GridSearch runs:  ${num_gridsearch}"
+echo "Dataset:          ${dataset}"
+
+if [ "${scheduler}" == "consensus" ]; then
+    echo "Queue size:       ${queue_size}"
+fi
+
+echo "Results:          ${result_dir}"
+echo
+
+# ==========================
+# Submit COMPSs job
+# ==========================
+
+enqueue_compss \
+    --lang=python \
+    --project_name=ehpc826 \
+    --qos=gp_debug \
+    \
+    --job_dependency="None" \
+    --num_nodes="${num_nodes}" \
+    --exec_time="${exec_time}" \
+    --log_dir="${log_dir}" \
+    --worker_working_dir="local_disk" \
+    \
+    "${scheduler_args[@]}" \
+    \
+    --log_level="off" \
+    --agents="${agents_mode}" \
+    \
+    -t \
+    --pythonpath="${SCRIPT_DIR}/application:${dislib_dir}" \
+    \
+    "--method_name=main_agents" \
+    "gridsearch_csvm" \
+    "${combinations}" \
+    "${num_blocks}" \
+    "${num_gridsearch}" \
+    "${dataset}"

@@ -1,0 +1,60 @@
+#!/bin/bash -e
+
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+
+cd "${SCRIPT_DIR}"
+
+echo "========================================"
+echo "SC26 artifact analysis"
+echo "========================================"
+echo
+
+# ==========================
+# Step 1: Extract raw results
+# ==========================
+
+echo "[1/3] Extracting experiment results..."
+echo
+
+python3 fetch_results.py \
+    --results results
+
+echo
+
+# ==========================
+# Step 2: Aggregate experiments
+# ==========================
+
+echo "[2/3] Aggregating experiment results..."
+echo
+
+python3 aggregate_results.py \
+    --results results \
+    --output results/processed
+
+echo
+
+# ==========================
+# Step 3: Generate figures
+# ==========================
+
+echo "[3/3] Generating figures..."
+echo
+
+python3 generate_figures.py \
+    --input results/processed \
+    --output results/figures
+
+echo
+echo "========================================"
+echo "Analysis complete"
+echo "========================================"
+echo
+
+echo "Processed data:"
+echo "  results/processed/experiment_summary.csv"
+echo "  results/processed/efficiency.csv"
+
+echo
+echo "Figures:"
+echo "  results/figures/"
