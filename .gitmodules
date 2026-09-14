@@ -1,0 +1,6 @@
+[submodule "dislib"]
+	path = dislib
+	url = git@github.com:xcasas/dislib.git
+[submodule "compss"]
+	path = compss
+	url = git@github.com:xcasas/compss.git
